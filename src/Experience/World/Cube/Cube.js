@@ -12,45 +12,85 @@ export default class Cube {
 
     this.edgeSegments = 5
 
-    // Indexes for coloring of the cube faces
+    // Indices for coloring of the cube faces
     this.rightFaceIndex =
       2 * (2 * Math.pow(this.edgeSegments, 2) + 2 * this.edgeSegments)
     this.deltaIndex =
       2 * (4 * Math.pow(this.edgeSegments, 2) + 4 * this.edgeSegments) + 2
 
+    this.cubes = []
     this.setGeometry()
     this.setMaterial()
     this.setMeshes()
   }
 
   setGeometry() {
-    this.geometry = new RoundedBoxGeometry(
-      this.cubeDim,
-      this.cubeDim,
-      this.cubeDim,
-      this.edgeSegments,
-      0.04
-    )
+    for (let i = 0; i < 27; i++) {
+      this.cubes.push({
+        geometry: new RoundedBoxGeometry(
+          this.cubeDim,
+          this.cubeDim,
+          this.cubeDim,
+          this.edgeSegments,
+          0.04
+        ),
+      })
+    }
   }
 
   setMaterial() {
     this.material = new THREE.MeshStandardMaterial({
       vertexColors: true,
     })
-
-    this.positionAttribute = this.geometry.getAttribute('position')
-
-    this.colorsArray = new Float32Array(this.positionAttribute.count * 3)
   }
 
-  setFaceColor(geometry, side) {
-    // Reset geometry to black
-    for (let i = 0; i < 6; i++) {
-      const faceIndex = this.rightFaceIndex + this.deltaIndex * i
-      this.setFaceArray(faceIndex, new THREE.Color(0, 0, 0))
-      this.setFaceArray(faceIndex + 1, new THREE.Color(0, 0, 0))
+  setMeshes() {
+    this.cubeGroup = new THREE.Group()
+    this.scene.add(this.cubeGroup)
+
+    // const colorsArray = new Float32Array(positionAttribute.count * 3)
+
+    // for (let i = 0; i < positionAttribute.count; i++) {
+    //   colorsArray[i * 3 + 0] = 0
+    //   colorsArray[i * 3 + 1] = 0
+    //   colorsArray[i * 3 + 2] = 0
+    // }
+    // this.geometry.setAttribute(
+    //   'color',
+    //   new THREE.Float32BufferAttribute(colorsArray, 3)
+    // )
+
+    const positionAttribute = this.cubes[0].geometry.getAttribute('position')
+
+    for (let i = 0; i < 27; i++) {
+      const mesh = new THREE.Mesh(this.cubes[i].geometry, this.material)
+      mesh.position.x =
+        Math.floor((i % 9) / 3) * (this.cubeDim + this.cubeSpacing)
+      mesh.position.y = Math.floor(i / 9) * (this.cubeDim + this.cubeSpacing)
+      mesh.position.z = (i % 3) * (this.cubeDim + this.cubeSpacing)
+      mesh.castShadow = true
+      mesh.receiveShadow = true
+
+      this.cubes[i].mesh = mesh
+      this.cubes[i].material = this.material
+      this.cubeGroup.add(mesh)
+
+      this.cubes[i].colorsArray = new Float32Array(positionAttribute.count * 3)
     }
 
+    const offset = -(this.cubeDim + this.cubeSpacing)
+    this.cubeGroup.position.set(offset, offset, offset)
+
+    // // Get bounding Coordinates for group
+    // const groupBox = new THREE.Box3().setFromObject(this.cubeGroup)
+    // console.log(groupBox)
+
+    this.setFaceColor(this.cubes[0], 'bottom')
+    this.setFaceColor(this.cubes[1], 'left')
+    this.setFaceColor(this.cubes[26], 'top')
+  }
+
+  setFaceColor(cube, side) {
     let index
     let color
     switch (side) {
@@ -78,57 +118,27 @@ export default class Cube {
         index = this.rightFaceIndex + this.deltaIndex * 5
         color = new THREE.Color('green')
         break
-
       default:
         break
     }
-    this.setFaceArray(index, color)
-    this.setFaceArray(index + 1, color)
+    this.setFaceArray(cube.colorsArray, index, color)
+    this.setFaceArray(cube.colorsArray, index + 1, color)
 
-    geometry.setAttribute(
+    cube.mesh.geometry.setAttribute(
       'color',
-      new THREE.Float32BufferAttribute(this.colorsArray, 3)
+      new THREE.Float32BufferAttribute(cube.colorsArray, 3)
     )
   }
 
-  setFaceArray(index, color) {
-    this.colorsArray[9 * index + 0] = color.r
-    this.colorsArray[9 * index + 1] = color.g
-    this.colorsArray[9 * index + 2] = color.b
-    this.colorsArray[9 * index + 3] = color.r
-    this.colorsArray[9 * index + 4] = color.g
-    this.colorsArray[9 * index + 5] = color.b
-    this.colorsArray[9 * index + 6] = color.r
-    this.colorsArray[9 * index + 7] = color.g
-    this.colorsArray[9 * index + 8] = color.b
-  }
-
-  setMeshes() {
-    this.cubeGroup = new THREE.Group()
-    this.scene.add(this.cubeGroup)
-
-    this.smallCubes = []
-    for (let i = 0; i < 27; i++) {
-      const mesh = new THREE.Mesh(this.geometry, this.material)
-      mesh.position.x =
-        Math.floor((i % 9) / 3) * (this.cubeDim + this.cubeSpacing)
-      mesh.position.y = Math.floor(i / 9) * (this.cubeDim + this.cubeSpacing)
-      mesh.position.z = (i % 3) * (this.cubeDim + this.cubeSpacing)
-      mesh.castShadow = true
-      mesh.receiveShadow = true
-
-      this.smallCubes.push(mesh)
-
-      this.cubeGroup.add(mesh)
-    }
-
-    const offset = -(this.cubeDim + this.cubeSpacing)
-    this.cubeGroup.position.set(offset, offset, offset)
-
-    // // Get bounding Coordinates for group
-    // const groupBox = new THREE.Box3().setFromObject(this.cubeGroup)
-    // console.log(groupBox)
-
-    this.setFaceColor(this.smallCubes[0].geometry, 'top')
+  setFaceArray(colorsArray, index, color) {
+    colorsArray[9 * index + 0] = color.r
+    colorsArray[9 * index + 1] = color.g
+    colorsArray[9 * index + 2] = color.b
+    colorsArray[9 * index + 3] = color.r
+    colorsArray[9 * index + 4] = color.g
+    colorsArray[9 * index + 5] = color.b
+    colorsArray[9 * index + 6] = color.r
+    colorsArray[9 * index + 7] = color.g
+    colorsArray[9 * index + 8] = color.b
   }
 }
