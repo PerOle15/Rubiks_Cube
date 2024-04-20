@@ -121,27 +121,28 @@ export default class Cube {
     switch (side) {
       case 'right':
         index = this.rightFaceIndex
-        color = new THREE.Color('red')
+        color = new THREE.Color('red').convertSRGBToLinear()
         break
       case 'left':
         index = this.rightFaceIndex + this.deltaIndex
-        color = new THREE.Color('orange')
+        color = new THREE.Color('orange').convertSRGBToLinear()
         break
       case 'top':
         index = this.rightFaceIndex + this.deltaIndex * 2
-        color = new THREE.Color('yellow')
+        color = new THREE.Color('yellow').convertSRGBToLinear()
         break
       case 'bottom':
         index = this.rightFaceIndex + this.deltaIndex * 3
-        color = new THREE.Color('white')
+        color = new THREE.Color('white').convertSRGBToLinear()
         break
       case 'front':
         index = this.rightFaceIndex + this.deltaIndex * 4
-        color = new THREE.Color('blue')
+        color = new THREE.Color('blue').convertSRGBToLinear()
         break
       case 'back':
         index = this.rightFaceIndex + this.deltaIndex * 5
-        color = new THREE.Color('green')
+        color = new THREE.Color('#008000')
+        console.log(color)
         break
       default:
         break

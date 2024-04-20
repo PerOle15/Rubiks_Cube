@@ -10,7 +10,7 @@ export default class AmbientLight {
   }
 
   setInstance() {
-    this.instance = new THREE.AmbientLight('#ffffff', 0.7)
+    this.instance = new THREE.AmbientLight('#ffffff', 2)
     this.scene.add(this.instance)
   }
 }
