@@ -11,6 +11,7 @@ export default class Cube {
     this.debug = this.experience.debug
     if (this.debug.active) {
       this.debugFolder = this.debug.gui.addFolder('Cube')
+      this.debugFolder.close()
     }
 
     // Dimensions
@@ -29,6 +30,9 @@ export default class Cube {
     this.setGeometry()
     this.setMaterial()
     this.setMeshes()
+
+    this.updateRotation(this.cubes[2], 'z', Math.PI / 2)
+    this.updateRotation(this.cubes[2], 'x', Math.PI / 2)
   }
 
   setGeometry() {
@@ -48,7 +52,7 @@ export default class Cube {
   setMaterial() {
     this.material = new THREE.MeshStandardMaterial({
       vertexColors: true,
-      metalness: 0.3,
+      metalness: 0.4,
       roughness: 0.9,
     })
 
@@ -173,5 +177,35 @@ export default class Cube {
     colorsArray[9 * index + 6] = color.r
     colorsArray[9 * index + 7] = color.g
     colorsArray[9 * index + 8] = color.b
+  }
+
+  updateRotation(cube, axis, angle) {
+    let axisVector
+    switch (axis) {
+      case 'x':
+        axisVector = new THREE.Vector3(1, 0, 0)
+        break
+      case 'y':
+        axisVector = new THREE.Vector3(0, 1, 0)
+        break
+      case 'z':
+        axisVector = new THREE.Vector3(0, 0, 1)
+        break
+
+      default:
+        break
+    }
+
+    const newQuaternion = new THREE.Quaternion().setFromAxisAngle(
+      axisVector,
+      angle
+    )
+    if (cube.mesh.quaternion.angleTo(new THREE.Quaternion() !== 0)) {
+      const oldQuaternion = cube.mesh.quaternion
+      cube.mesh.applyQuaternion(oldQuaternion.multiply(newQuaternion))
+    } else {
+      // never turned before
+      cube.mesh.applyQuaternion(newQuaternion)
+    }
   }
 }
