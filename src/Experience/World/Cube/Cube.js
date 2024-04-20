@@ -7,8 +7,15 @@ export default class Cube {
     this.experience = new Experience()
     this.scene = this.experience.scene
 
+    // Debug
+    this.debug = this.experience.debug
+    if (this.debug.active) {
+      this.debugFolder = this.debug.gui.addFolder('Cube')
+    }
+
+    // Dimensions
     this.cubeDim = 0.5
-    this.cubeSpacing = 0.02
+    this.cubeSpacing = 0.015
 
     this.edgeSegments = 5
 
@@ -41,7 +48,14 @@ export default class Cube {
   setMaterial() {
     this.material = new THREE.MeshStandardMaterial({
       vertexColors: true,
+      metalness: 0.3,
+      roughness: 0.9,
     })
+
+    if (this.debug.active) {
+      this.debugFolder.add(this.material, 'metalness', 0, 1, 0.001)
+      this.debugFolder.add(this.material, 'roughness', 0, 1, 0.001)
+    }
   }
 
   setMeshes() {
@@ -64,6 +78,8 @@ export default class Cube {
 
     for (let i = 0; i < 27; i++) {
       const mesh = new THREE.Mesh(this.cubes[i].geometry, this.material)
+
+      //Positioning the cubes
       mesh.position.x =
         Math.floor((i % 9) / 3) * (this.cubeDim + this.cubeSpacing)
       mesh.position.y = Math.floor(i / 9) * (this.cubeDim + this.cubeSpacing)
@@ -75,19 +91,36 @@ export default class Cube {
       this.cubes[i].material = this.material
       this.cubeGroup.add(mesh)
 
+      // Coloring
       this.cubes[i].colorsArray = new Float32Array(positionAttribute.count * 3)
+
+      if (i < 9) {
+        this.setFaceColor(this.cubes[i], 'bottom')
+      }
+      if (i > 17) {
+        this.setFaceColor(this.cubes[i], 'top')
+      }
+      if (i % 3 === 0) {
+        this.setFaceColor(this.cubes[i], 'back')
+      }
+      if (i % 3 === 2) {
+        this.setFaceColor(this.cubes[i], 'front')
+      }
+      if (i % 9 < 3) {
+        this.setFaceColor(this.cubes[i], 'left')
+      }
+      if (i % 9 > 5) {
+        this.setFaceColor(this.cubes[i], 'right')
+      }
     }
 
+    // Poition the cube
     const offset = -(this.cubeDim + this.cubeSpacing)
     this.cubeGroup.position.set(offset, offset, offset)
 
     // // Get bounding Coordinates for group
     // const groupBox = new THREE.Box3().setFromObject(this.cubeGroup)
     // console.log(groupBox)
-
-    this.setFaceColor(this.cubes[0], 'bottom')
-    this.setFaceColor(this.cubes[1], 'left')
-    this.setFaceColor(this.cubes[26], 'top')
   }
 
   setFaceColor(cube, side) {
