@@ -29,6 +29,8 @@ export default class Cube {
     this.faceNamesArray = ['bottom', 'top', 'back', 'front', 'left', 'right']
 
     this.cubes = []
+    // Indices of all cubes in the order they are positioned
+    this.cubeOrder = []
     this.setGeometry()
     this.setMaterial()
     this.setMeshes()
@@ -70,13 +72,9 @@ export default class Cube {
     const positionAttribute = this.cubes[0].geometry.getAttribute('position')
 
     for (let i = 0; i < 27; i++) {
-      const mesh = new THREE.Mesh(this.cubes[i].geometry, this.material)
+      this.cubeOrder[i] = i
 
-      //Positioning the cubes
-      mesh.position.x =
-        Math.floor((i % 9) / 3) * (this.cubeDim + this.cubeSpacing)
-      mesh.position.y = Math.floor(i / 9) * (this.cubeDim + this.cubeSpacing)
-      mesh.position.z = (i % 3) * (this.cubeDim + this.cubeSpacing)
+      const mesh = new THREE.Mesh(this.cubes[i].geometry, this.material)
       mesh.castShadow = true
       mesh.receiveShadow = true
 
@@ -94,13 +92,27 @@ export default class Cube {
       }
     }
 
-    // Poition the cube
+    // Position the single cubes
+    this.setCubesPosition()
+
+    // Poition the entire cube
     const offset = -(this.cubeDim + this.cubeSpacing)
     this.cubeGroup.position.set(offset, offset, offset)
 
     // // Get bounding Coordinates for group
     // const groupBox = new THREE.Box3().setFromObject(this.cubeGroup)
     // console.log(groupBox)
+  }
+
+  setCubesPosition() {
+    this.cubeOrder.forEach((cubeIndex, i) => {
+      this.cubes[cubeIndex].mesh.position.x =
+        Math.floor((i % 9) / 3) * (this.cubeDim + this.cubeSpacing)
+      this.cubes[cubeIndex].mesh.position.y =
+        Math.floor(i / 9) * (this.cubeDim + this.cubeSpacing)
+      this.cubes[cubeIndex].mesh.position.z =
+        (i % 3) * (this.cubeDim + this.cubeSpacing)
+    })
   }
 
   setFaceColor(cube, side) {
@@ -156,22 +168,6 @@ export default class Cube {
   }
 
   updateRotation(cube, axis, angle) {
-    // let axisVector = axis
-    // switch (axis) {
-    //   case 'x':
-    //     axisVector = new THREE.Vector3(1, 0, 0)
-    //     break
-    //   case 'y':
-    //     axisVector = new THREE.Vector3(0, 1, 0)
-    //     break
-    //   case 'z':
-    //     axisVector = new THREE.Vector3(0, 0, 1)
-    //     break
-
-    //   default:
-    //     break
-    // }
-
     const newQuaternion = new THREE.Quaternion().setFromAxisAngle(axis, angle)
     if (cube.mesh.quaternion.angleTo(new THREE.Quaternion() !== 0)) {
       const oldQuaternion = cube.mesh.quaternion
@@ -186,11 +182,36 @@ export default class Cube {
     const cubeIndices = this.getFaceCubes(face)
 
     const rotationAxis = this.getRotationAxis(face, positiveRotation)
-    console.log(rotationAxis)
 
     for (const cubeIndex of cubeIndices) {
       this.updateRotation(this.cubes[cubeIndex], rotationAxis, Math.PI / 2)
     }
+
+    this.setPositionForRotation(face, positiveRotation)
+    this.setCubesPosition()
+  }
+
+  setPositionForRotation(face, positiveRotation) {
+    const cubeIndices = this.getFaceCubes(face)
+    const rotatedIndices = [
+      cubeIndices[6],
+      cubeIndices[3],
+      cubeIndices[0],
+      cubeIndices[7],
+      cubeIndices[4],
+      cubeIndices[1],
+      cubeIndices[8],
+      cubeIndices[5],
+      cubeIndices[2],
+    ]
+    if (face === 'back' || face === 'bottom' || face === 'right') {
+      rotatedIndices.reverse()
+    }
+    if (!positiveRotation) rotatedIndices.reverse()
+
+    cubeIndices.forEach(
+      (value, i) => (this.cubeOrder[value] = rotatedIndices[i])
+    )
   }
 
   getRotationAxis(face, positiveRotation) {
