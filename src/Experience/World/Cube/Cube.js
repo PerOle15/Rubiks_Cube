@@ -26,13 +26,14 @@ export default class Cube {
     this.deltaIndex =
       2 * (4 * Math.pow(this.edgeSegments, 2) + 4 * this.edgeSegments) + 2
 
+    this.faceNamesArray = ['bottom', 'top', 'back', 'front', 'left', 'right']
+
     this.cubes = []
     this.setGeometry()
     this.setMaterial()
     this.setMeshes()
 
-    this.updateRotation(this.cubes[2], 'z', Math.PI / 2)
-    this.updateRotation(this.cubes[2], 'x', Math.PI / 2)
+    this.rotateFace('right', true)
   }
 
   setGeometry() {
@@ -66,18 +67,6 @@ export default class Cube {
     this.cubeGroup = new THREE.Group()
     this.scene.add(this.cubeGroup)
 
-    // const colorsArray = new Float32Array(positionAttribute.count * 3)
-
-    // for (let i = 0; i < positionAttribute.count; i++) {
-    //   colorsArray[i * 3 + 0] = 0
-    //   colorsArray[i * 3 + 1] = 0
-    //   colorsArray[i * 3 + 2] = 0
-    // }
-    // this.geometry.setAttribute(
-    //   'color',
-    //   new THREE.Float32BufferAttribute(colorsArray, 3)
-    // )
-
     const positionAttribute = this.cubes[0].geometry.getAttribute('position')
 
     for (let i = 0; i < 27; i++) {
@@ -98,23 +87,10 @@ export default class Cube {
       // Coloring
       this.cubes[i].colorsArray = new Float32Array(positionAttribute.count * 3)
 
-      if (i < 9) {
-        this.setFaceColor(this.cubes[i], 'bottom')
-      }
-      if (i > 17) {
-        this.setFaceColor(this.cubes[i], 'top')
-      }
-      if (i % 3 === 0) {
-        this.setFaceColor(this.cubes[i], 'back')
-      }
-      if (i % 3 === 2) {
-        this.setFaceColor(this.cubes[i], 'front')
-      }
-      if (i % 9 < 3) {
-        this.setFaceColor(this.cubes[i], 'left')
-      }
-      if (i % 9 > 5) {
-        this.setFaceColor(this.cubes[i], 'right')
+      for (const faceName of this.faceNamesArray) {
+        if (this.cubeIsAtPosition(faceName, i)) {
+          this.setFaceColor(this.cubes[i], faceName)
+        }
       }
     }
 
@@ -158,8 +134,8 @@ export default class Cube {
       default:
         break
     }
-    this.setFaceArray(cube.colorsArray, index, color)
-    this.setFaceArray(cube.colorsArray, index + 1, color)
+    this.setFaceColorsArray(cube.colorsArray, index, color)
+    this.setFaceColorsArray(cube.colorsArray, index + 1, color)
 
     cube.mesh.geometry.setAttribute(
       'color',
@@ -167,7 +143,7 @@ export default class Cube {
     )
   }
 
-  setFaceArray(colorsArray, index, color) {
+  setFaceColorsArray(colorsArray, index, color) {
     colorsArray[9 * index + 0] = color.r
     colorsArray[9 * index + 1] = color.g
     colorsArray[9 * index + 2] = color.b
@@ -180,26 +156,23 @@ export default class Cube {
   }
 
   updateRotation(cube, axis, angle) {
-    let axisVector
-    switch (axis) {
-      case 'x':
-        axisVector = new THREE.Vector3(1, 0, 0)
-        break
-      case 'y':
-        axisVector = new THREE.Vector3(0, 1, 0)
-        break
-      case 'z':
-        axisVector = new THREE.Vector3(0, 0, 1)
-        break
+    // let axisVector = axis
+    // switch (axis) {
+    //   case 'x':
+    //     axisVector = new THREE.Vector3(1, 0, 0)
+    //     break
+    //   case 'y':
+    //     axisVector = new THREE.Vector3(0, 1, 0)
+    //     break
+    //   case 'z':
+    //     axisVector = new THREE.Vector3(0, 0, 1)
+    //     break
 
-      default:
-        break
-    }
+    //   default:
+    //     break
+    // }
 
-    const newQuaternion = new THREE.Quaternion().setFromAxisAngle(
-      axisVector,
-      angle
-    )
+    const newQuaternion = new THREE.Quaternion().setFromAxisAngle(axis, angle)
     if (cube.mesh.quaternion.angleTo(new THREE.Quaternion() !== 0)) {
       const oldQuaternion = cube.mesh.quaternion
       cube.mesh.applyQuaternion(oldQuaternion.multiply(newQuaternion))
@@ -208,4 +181,89 @@ export default class Cube {
       cube.mesh.applyQuaternion(newQuaternion)
     }
   }
+
+  rotateFace(face, positiveRotation) {
+    const cubeIndices = this.getFaceCubes(face)
+
+    const rotationAxis = this.getRotationAxis(face, positiveRotation)
+    console.log(rotationAxis)
+
+    for (const cubeIndex of cubeIndices) {
+      this.updateRotation(this.cubes[cubeIndex], rotationAxis, Math.PI / 2)
+    }
+  }
+
+  getRotationAxis(face, positiveRotation) {
+    let axis
+    switch (face) {
+      case 'bottom':
+        axis = new THREE.Vector3(0, -1, 0)
+        break
+      case 'top':
+        axis = new THREE.Vector3(0, 1, 0)
+        break
+      case 'back':
+        axis = new THREE.Vector3(0, 0, -1)
+        break
+      case 'front':
+        axis = new THREE.Vector3(0, 0, 1)
+        break
+      case 'left':
+        axis = new THREE.Vector3(-1, 0, 0)
+        break
+      case 'right':
+        axis = new THREE.Vector3(1, 0, 0)
+        break
+    }
+    if (!positiveRotation) {
+      axis.multiplyScalar(-1)
+    }
+
+    return axis
+  }
+
+  getFaceCubes(face) {
+    // return all cubes that belong to the face
+    const cubeIndices = []
+    for (let i = 0; i < 27; i++) {
+      if (this.cubeIsAtPosition(face, i)) {
+        cubeIndices.push(i)
+      }
+    }
+
+    return cubeIndices
+  }
+
+  cubeIsAtPosition(position, i) {
+    let isAtPosition = false
+    switch (position) {
+      case 'bottom':
+        isAtPosition = i < 9
+        break
+      case 'top':
+        isAtPosition = i > 17
+        break
+      case 'back':
+        isAtPosition = i % 3 === 0
+        break
+      case 'front':
+        isAtPosition = i % 3 === 2
+        break
+      case 'left':
+        isAtPosition = i % 9 < 3
+        break
+      case 'right':
+        isAtPosition = i % 9 > 5
+        break
+
+      default:
+        break
+    }
+
+    return isAtPosition
+  }
+
+  // to be implemented
+  // For raycasting click
+  getFaceOrientation() {}
 }
