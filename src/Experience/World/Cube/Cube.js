@@ -36,6 +36,8 @@ export default class Cube {
     this.setMeshes()
 
     this.rotateFace('right', true)
+    this.rotateFace('right', true)
+    this.rotateFace('back', true)
   }
 
   setGeometry() {
@@ -142,7 +144,6 @@ export default class Cube {
       case 'back':
         index = this.rightFaceIndex + this.deltaIndex * 5
         color = new THREE.Color('#008000')
-        console.log(color)
         break
       default:
         break
@@ -185,7 +186,11 @@ export default class Cube {
     const rotationAxis = this.getRotationAxis(face, positiveRotation)
 
     for (const cubeIndex of cubeIndices) {
-      this.updateRotation(this.cubes[cubeIndex], rotationAxis, Math.PI / 2)
+      this.updateRotation(
+        this.cubes[this.cubeOrder[cubeIndex]],
+        rotationAxis,
+        Math.PI / 2
+      )
     }
 
     this.setPositionForRotation(face, positiveRotation)
@@ -195,15 +200,15 @@ export default class Cube {
   setPositionForRotation(face, positiveRotation) {
     const cubeIndices = this.getFaceCubes(face)
     const rotatedIndices = [
-      cubeIndices[6],
-      cubeIndices[3],
-      cubeIndices[0],
-      cubeIndices[7],
-      cubeIndices[4],
-      cubeIndices[1],
-      cubeIndices[8],
-      cubeIndices[5],
-      cubeIndices[2],
+      this.cubeOrder[cubeIndices[6]],
+      this.cubeOrder[cubeIndices[3]],
+      this.cubeOrder[cubeIndices[0]],
+      this.cubeOrder[cubeIndices[7]],
+      this.cubeOrder[cubeIndices[4]],
+      this.cubeOrder[cubeIndices[1]],
+      this.cubeOrder[cubeIndices[8]],
+      this.cubeOrder[cubeIndices[5]],
+      this.cubeOrder[cubeIndices[2]],
     ]
     if (face === 'back' || face === 'bottom' || face === 'right') {
       rotatedIndices.reverse()
@@ -247,11 +252,11 @@ export default class Cube {
   getFaceCubes(face) {
     // return all cubes that belong to the face
     const cubeIndices = []
-    for (let i = 0; i < 27; i++) {
+    this.cubeOrder.forEach((value, i) => {
       if (this.cubeIsAtPosition(face, i)) {
         cubeIndices.push(i)
       }
-    }
+    })
 
     return cubeIndices
   }
