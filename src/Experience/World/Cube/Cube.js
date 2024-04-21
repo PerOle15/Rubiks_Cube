@@ -1,9 +1,11 @@
 import * as THREE from 'three'
 import Experience from '../../Experience'
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js'
+import EventEmitter from '../../Utils/EventEmitter'
 
-export default class Cube {
+export default class Cube extends EventEmitter {
   constructor() {
+    super()
     this.experience = new Experience()
     this.scene = this.experience.scene
     this.time = this.experience.time
@@ -17,19 +19,18 @@ export default class Cube {
 
     this.setup()
 
-    this.rotateFace('right', true)
-
-    setTimeout(() => {
-      this.rotateFace('front', true)
+    this.experience.resources.on('ready', () => {
+      this.rotateFace('right', true)
       setTimeout(() => {
-        this.rotateFace('left', true)
+        this.rotateFace('front', true)
         setTimeout(() => {
-          this.rotateFace('back', true)
+          this.rotateFace('left', true)
+          setTimeout(() => {
+            this.rotateFace('back', true)
+          }, 2000)
         }, 2000)
       }, 2000)
-    }, 2000)
-    // this.rotateFace('right', true)
-    // this.rotateFace('back', true)
+    })
   }
 
   setup() {
@@ -52,7 +53,18 @@ export default class Cube {
    */
   update() {
     if (this.isRotating) {
-      this.rotationStep()
+      if (this.currentRotationTime < this.rotationDuration) {
+        this.currentRotationTime += this.time.delta
+        this.rotationStep()
+        this.positionStep()
+      } else {
+        this.isRotating = false
+        this.setPositionForRotation(
+          this.currentRotationFace,
+          this.currentPositiveRotation
+        )
+        this.setRotatedCubesPosition()
+      }
     }
   }
 
@@ -60,6 +72,8 @@ export default class Cube {
     // Dimensions
     this.cubeDim = 0.5
     this.cubeSpacing = 0.015
+
+    this.offset = -(this.cubeDim + this.cubeSpacing)
 
     this.edgeSegments = 5
 
@@ -136,11 +150,11 @@ export default class Cube {
     }
 
     // Position the single cubes
-    this.setCubesPosition()
+    this.setAllCubesPosition()
 
     // Poition the entire cube
-    const offset = -(this.cubeDim + this.cubeSpacing)
-    this.cubeGroup.position.set(offset, offset, offset)
+    // this.offset = -(this.cubeDim + this.cubeSpacing)
+    // this.cubeGroup.position.set(this.offset, this.offset, this.offset)
 
     // // Get bounding Coordinates for group
     // const groupBox = new THREE.Box3().setFromObject(this.cubeGroup)
@@ -150,14 +164,15 @@ export default class Cube {
   /**
    * Sets the position of all cubies according to the order of cubeOrder
    */
-  setCubesPosition() {
+  setAllCubesPosition() {
     this.cubeOrder.forEach((cubeIndex, i) => {
       this.cubes[cubeIndex].mesh.position.x =
-        Math.floor((i % 9) / 3) * (this.cubeDim + this.cubeSpacing)
+        Math.floor((i % 9) / 3) * (this.cubeDim + this.cubeSpacing) +
+        this.offset
       this.cubes[cubeIndex].mesh.position.y =
-        Math.floor(i / 9) * (this.cubeDim + this.cubeSpacing)
+        Math.floor(i / 9) * (this.cubeDim + this.cubeSpacing) + this.offset
       this.cubes[cubeIndex].mesh.position.z =
-        (i % 3) * (this.cubeDim + this.cubeSpacing)
+        (i % 3) * (this.cubeDim + this.cubeSpacing) + this.offset
     })
   }
 
@@ -233,17 +248,23 @@ export default class Cube {
   rotateFace(face, positiveRotation) {
     if (this.isRotating) return
     this.isRotating = true
+
+    this.currentRotationFace = face
     this.rotatingCubes = this.getFaceCubes(face)
     this.currentDestQuaternions = []
+    this.currentRotationTime = 0
+    this.currentPositiveRotation = positiveRotation
+    this.currentRotationAxis = this.getRotationAxis(face, positiveRotation)
 
-    const rotationAxis = this.getRotationAxis(face, positiveRotation)
+    this.setStartingPositions()
 
-    this.setPositionForRotation(face, positiveRotation)
-    this.setCubesPosition()
+    // this.setPositionForRotation(face, positiveRotation)
+    // this.setRotatedCubesPosition()
 
     for (const cubeIndex of this.rotatingCubes) {
-      // this.rotatingCubes.push(cubeIndex)
-      this.setCubieRotation(this.cubes[this.cubeOrder[cubeIndex]], rotationAxis)
+      const cube = this.cubes[this.cubeOrder[cubeIndex]]
+
+      this.setCubieRotation(cube)
     }
   }
 
@@ -252,10 +273,10 @@ export default class Cube {
    * @param {Object} cube
    * @param {THREE.Vector3} axis
    */
-  setCubieRotation(cube, axis) {
+  setCubieRotation(cube) {
     const angle = Math.PI / 2
     const rotationQuaternion = new THREE.Quaternion().setFromAxisAngle(
-      axis,
+      this.currentRotationAxis,
       angle
     )
     const oldQuaternion = cube.mesh.quaternion
@@ -272,7 +293,6 @@ export default class Cube {
         this.currentDestQuaternions[0]
       ) !== 0
     ) {
-      console.log('rotated')
       const angle = ((Math.PI / 2) * this.time.delta) / this.rotationDuration
       this.rotatingCubes.forEach((cubeIndex, i) => {
         this.cubes[this.cubeOrder[cubeIndex]].mesh.quaternion.rotateTowards(
@@ -281,11 +301,11 @@ export default class Cube {
         )
       })
     } else {
-      console.log(
-        this.cubes[
-          this.cubeOrder[this.rotatingCubes[0]]
-        ].mesh.quaternion.angleTo(this.currentDestQuaternions[0])
-      )
+      // console.log(
+      //   this.cubes[
+      //     this.cubeOrder[this.rotatingCubes[0]]
+      //   ].mesh.quaternion.angleTo(this.currentDestQuaternions[0])
+      // )
       this.isRotating = false
     }
   }
@@ -316,6 +336,97 @@ export default class Cube {
     cubeIndices.forEach(
       (value, i) => (this.cubeOrder[value] = rotatedIndices[i])
     )
+  }
+
+  setRotatedCubesPosition() {
+    for (const i of this.rotatingCubes) {
+      const cubeIndex = this.cubeOrder[i]
+      this.cubes[cubeIndex].mesh.position.x =
+        Math.floor((i % 9) / 3) * (this.cubeDim + this.cubeSpacing) +
+        this.offset
+      this.cubes[cubeIndex].mesh.position.y =
+        Math.floor(i / 9) * (this.cubeDim + this.cubeSpacing) + this.offset
+      this.cubes[cubeIndex].mesh.position.z =
+        (i % 3) * (this.cubeDim + this.cubeSpacing) + this.offset
+    }
+  }
+
+  positionStep() {
+    this.currentRotationAngle =
+      (Math.min(this.currentRotationTime / this.rotationDuration, 1) *
+        Math.PI) /
+      2
+    // this.currentRotationAngle *= this.currentPositiveRotation ? -1 : 1
+
+    this.rotatingCubes.forEach((cubeIndex, i) => {
+      console.log(this.currentRotationAxis)
+      const startPosition = this.currentStartingPositions[i]
+      let newPosition
+      if (this.currentRotationAxis.x === 1) {
+        newPosition = new THREE.Vector3(
+          startPosition.x,
+          startPosition.y * Math.cos(this.currentRotationAngle) -
+            startPosition.z * Math.sin(this.currentRotationAngle),
+          startPosition.y * Math.sin(this.currentRotationAngle) +
+            startPosition.z * Math.cos(this.currentRotationAngle)
+        )
+      } else if (this.currentRotationAxis.x === -1) {
+        newPosition = new THREE.Vector3(
+          startPosition.x,
+          startPosition.y * Math.cos(-this.currentRotationAngle) -
+            startPosition.z * Math.sin(-this.currentRotationAngle),
+          startPosition.y * Math.sin(-this.currentRotationAngle) +
+            startPosition.z * Math.cos(-this.currentRotationAngle)
+        )
+      } else if (this.currentRotationAxis.y === 1) {
+        newPosition = new THREE.Vector3(
+          startPosition.x * Math.cos(-this.currentRotationAngle) -
+            startPosition.z * Math.sin(-this.currentRotationAngle),
+          startPosition.y,
+          startPosition.x * Math.sin(-this.currentRotationAngle) +
+            startPosition.z * Math.cos(-this.currentRotationAngle)
+        )
+      } else if (this.currentRotationAxis.y === -1) {
+        newPosition = new THREE.Vector3(
+          startPosition.x * Math.cos(this.currentRotationAngle) -
+            startPosition.z * Math.sin(this.currentRotationAngle),
+          startPosition.y,
+          startPosition.x * Math.sin(this.currentRotationAngle) +
+            startPosition.z * Math.cos(this.currentRotationAngle)
+        )
+      } else if (this.currentRotationAxis.z === 1) {
+        newPosition = new THREE.Vector3(
+          startPosition.x * Math.cos(this.currentRotationAngle) -
+            startPosition.y * Math.sin(this.currentRotationAngle),
+          startPosition.x * Math.sin(this.currentRotationAngle) +
+            startPosition.y * Math.cos(this.currentRotationAngle),
+          startPosition.z
+        )
+      } else if (this.currentRotationAxis.z === -1) {
+        newPosition = new THREE.Vector3(
+          startPosition.x * Math.cos(-this.currentRotationAngle) -
+            startPosition.y * Math.sin(-this.currentRotationAngle),
+          startPosition.x * Math.sin(-this.currentRotationAngle) +
+            startPosition.y * Math.cos(-this.currentRotationAngle),
+          startPosition.z
+        )
+      }
+
+      const cubeMesh = this.cubes[this.cubeOrder[cubeIndex]].mesh
+      cubeMesh.position.set(newPosition.x, newPosition.y, newPosition.z)
+    })
+
+    this.currentRotationAxis
+    this.currentPositiveRotation
+  }
+
+  setStartingPositions() {
+    this.currentStartingPositions = []
+    for (const cubeIndex of this.rotatingCubes) {
+      const cube = this.cubes[this.cubeOrder[cubeIndex]]
+      this.currentStartingPositions.push(cube.mesh.position.clone())
+    }
+    console.log(this.currentStartingPositions)
   }
 
   /**
@@ -410,3 +521,9 @@ export default class Cube {
   // For raycasting click
   getFaceOrientation() {}
 }
+
+/**
+ * TODO:
+ * Nach Rotationsanimation Rotation festlegen, um Rundungsfehler zu vermeiden
+ *
+ */
