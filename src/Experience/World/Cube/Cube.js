@@ -57,8 +57,8 @@ export default class Cube {
   setMaterial() {
     this.material = new THREE.MeshStandardMaterial({
       vertexColors: true,
-      metalness: 0.4,
-      roughness: 0.9,
+      metalness: 0,
+      roughness: 0.74,
     })
 
     if (this.debug.active) {

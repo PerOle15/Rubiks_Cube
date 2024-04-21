@@ -19,6 +19,8 @@ export default class World {
 
     this.cube = new Cube()
 
+    this.scene.background = new THREE.Color(0xdbb49a)
+
     this.resources.on('ready', () => {
       // Setup
       this.environment = new Environment()
