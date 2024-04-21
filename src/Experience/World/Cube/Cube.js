@@ -6,6 +6,7 @@ export default class Cube {
   constructor() {
     this.experience = new Experience()
     this.scene = this.experience.scene
+    this.time = this.experience.time
 
     // Debug
     this.debug = this.experience.debug
@@ -14,6 +15,48 @@ export default class Cube {
       this.debugFolder.close()
     }
 
+    this.setup()
+
+    this.rotateFace('right', true)
+
+    setTimeout(() => {
+      this.rotateFace('front', true)
+      setTimeout(() => {
+        this.rotateFace('left', true)
+        setTimeout(() => {
+          this.rotateFace('back', true)
+        }, 2000)
+      }, 2000)
+    }, 2000)
+    // this.rotateFace('right', true)
+    // this.rotateFace('back', true)
+  }
+
+  setup() {
+    this.setConstants()
+
+    this.cubes = []
+    // Indices of all cubes in the order they are positioned
+    this.cubeOrder = []
+    this.setGeometry()
+    this.setMaterial()
+    this.setMeshes()
+
+    this.isRotating = false
+    // rotation duration in ms
+    this.rotationDuration = 1000
+  }
+
+  /**
+   * updates the state of the cube
+   */
+  update() {
+    if (this.isRotating) {
+      this.rotationStep()
+    }
+  }
+
+  setConstants() {
     // Dimensions
     this.cubeDim = 0.5
     this.cubeSpacing = 0.015
@@ -27,19 +70,11 @@ export default class Cube {
       2 * (4 * Math.pow(this.edgeSegments, 2) + 4 * this.edgeSegments) + 2
 
     this.faceNamesArray = ['bottom', 'top', 'back', 'front', 'left', 'right']
-
-    this.cubes = []
-    // Indices of all cubes in the order they are positioned
-    this.cubeOrder = []
-    this.setGeometry()
-    this.setMaterial()
-    this.setMeshes()
-
-    this.rotateFace('right', true)
-    this.rotateFace('right', true)
-    this.rotateFace('back', true)
   }
 
+  /**
+   * Adds all geometries to this.cubes
+   */
   setGeometry() {
     for (let i = 0; i < 27; i++) {
       this.cubes.push({
@@ -54,6 +89,9 @@ export default class Cube {
     }
   }
 
+  /**
+   * Setup the material
+   */
   setMaterial() {
     this.material = new THREE.MeshStandardMaterial({
       vertexColors: true,
@@ -67,6 +105,9 @@ export default class Cube {
     }
   }
 
+  /**
+   * Setup all cubie meshes
+   */
   setMeshes() {
     this.cubeGroup = new THREE.Group()
     this.scene.add(this.cubeGroup)
@@ -106,6 +147,9 @@ export default class Cube {
     // console.log(groupBox)
   }
 
+  /**
+   * Sets the position of all cubies according to the order of cubeOrder
+   */
   setCubesPosition() {
     this.cubeOrder.forEach((cubeIndex, i) => {
       this.cubes[cubeIndex].mesh.position.x =
@@ -117,10 +161,15 @@ export default class Cube {
     })
   }
 
-  setFaceColor(cube, side) {
+  /**
+   * Sets the color of a single cubie on a given face
+   * @param {Object} cube
+   * @param {String} face
+   */
+  setFaceColor(cube, face) {
     let index
     let color
-    switch (side) {
+    switch (face) {
       case 'right':
         index = this.rightFaceIndex
         color = new THREE.Color('red').convertSRGBToLinear()
@@ -157,6 +206,12 @@ export default class Cube {
     )
   }
 
+  /**
+   * Sets the colors of a vertex in a color attribute array
+   * @param {Float32Array} colorsArray
+   * @param {Number} index
+   * @param {THREE.Color} color
+   */
   setFaceColorsArray(colorsArray, index, color) {
     colorsArray[9 * index + 0] = color.r
     colorsArray[9 * index + 1] = color.g
@@ -169,34 +224,77 @@ export default class Cube {
     colorsArray[9 * index + 8] = color.b
   }
 
-  updateRotation(cube, axis, angle) {
-    const newQuaternion = new THREE.Quaternion().setFromAxisAngle(axis, angle)
-    if (cube.mesh.quaternion.angleTo(new THREE.Quaternion() !== 0)) {
-      const oldQuaternion = cube.mesh.quaternion
-      cube.mesh.applyQuaternion(oldQuaternion.multiply(newQuaternion))
-    } else {
-      // never turned before
-      cube.mesh.applyQuaternion(newQuaternion)
-    }
-  }
-
+  /**
+   * rotates a given face of the cube
+   * @param {String} face
+   * @param {Boolean} positiveRotation
+   *
+   */
   rotateFace(face, positiveRotation) {
-    const cubeIndices = this.getFaceCubes(face)
+    if (this.isRotating) return
+    this.isRotating = true
+    this.rotatingCubes = this.getFaceCubes(face)
+    this.currentDestQuaternions = []
 
     const rotationAxis = this.getRotationAxis(face, positiveRotation)
 
-    for (const cubeIndex of cubeIndices) {
-      this.updateRotation(
-        this.cubes[this.cubeOrder[cubeIndex]],
-        rotationAxis,
-        Math.PI / 2
-      )
-    }
-
     this.setPositionForRotation(face, positiveRotation)
     this.setCubesPosition()
+
+    for (const cubeIndex of this.rotatingCubes) {
+      // this.rotatingCubes.push(cubeIndex)
+      this.setCubieRotation(this.cubes[this.cubeOrder[cubeIndex]], rotationAxis)
+    }
   }
 
+  /**
+   * rotates a single cubie around a given axis
+   * @param {Object} cube
+   * @param {THREE.Vector3} axis
+   */
+  setCubieRotation(cube, axis) {
+    const angle = Math.PI / 2
+    const rotationQuaternion = new THREE.Quaternion().setFromAxisAngle(
+      axis,
+      angle
+    )
+    const oldQuaternion = cube.mesh.quaternion
+    const newQuaternion = rotationQuaternion.multiply(oldQuaternion)
+    this.currentDestQuaternions.push(newQuaternion)
+  }
+
+  /**
+   * progresses the rotation of the cubies
+   */
+  rotationStep() {
+    if (
+      this.cubes[this.cubeOrder[this.rotatingCubes[0]]].mesh.quaternion.angleTo(
+        this.currentDestQuaternions[0]
+      ) !== 0
+    ) {
+      console.log('rotated')
+      const angle = ((Math.PI / 2) * this.time.delta) / this.rotationDuration
+      this.rotatingCubes.forEach((cubeIndex, i) => {
+        this.cubes[this.cubeOrder[cubeIndex]].mesh.quaternion.rotateTowards(
+          this.currentDestQuaternions[i],
+          angle
+        )
+      })
+    } else {
+      console.log(
+        this.cubes[
+          this.cubeOrder[this.rotatingCubes[0]]
+        ].mesh.quaternion.angleTo(this.currentDestQuaternions[0])
+      )
+      this.isRotating = false
+    }
+  }
+
+  /**
+   * sets the position of the cubes in cubeOrder when rotated
+   * @param {String} face
+   * @param {Boolean} positiveRotation
+   */
   setPositionForRotation(face, positiveRotation) {
     const cubeIndices = this.getFaceCubes(face)
     const rotatedIndices = [
@@ -220,6 +318,12 @@ export default class Cube {
     )
   }
 
+  /**
+   *
+   * @param {String} face
+   * @param {Boolean} positiveRotation
+   * @returns {THREE.Vector3} the axis of rotation
+   */
   getRotationAxis(face, positiveRotation) {
     let axis
     switch (face) {
@@ -249,6 +353,12 @@ export default class Cube {
     return axis
   }
 
+  /**
+   *
+   * @param {String} face
+   * @returns {Number[]} the indices pointing to the position of the cubies in this.cubeOrder, belonging to the given face
+   *
+   */
   getFaceCubes(face) {
     // return all cubes that belong to the face
     const cubeIndices = []
@@ -261,6 +371,12 @@ export default class Cube {
     return cubeIndices
   }
 
+  /**
+   *
+   * @param {String} position
+   * @param {Boolean} i
+   * @returns {Boolean} whether a cube is on a given face
+   */
   cubeIsAtPosition(position, i) {
     let isAtPosition = false
     switch (position) {

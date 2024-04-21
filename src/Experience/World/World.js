@@ -27,5 +27,7 @@ export default class World {
     })
   }
 
-  update() {}
+  update() {
+    this.cube.update()
+  }
 }
