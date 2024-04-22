@@ -11,8 +11,8 @@ export default class World {
     this.scene = this.experience.scene
     this.resources = this.experience.resources
 
-    this.axesHelper = new THREE.AxesHelper()
-    this.scene.add(this.axesHelper)
+    // this.axesHelper = new THREE.AxesHelper()
+    // this.scene.add(this.axesHelper)
 
     this.sunLight = new SunLight()
     this.ambientLight = new AmbientLight()

@@ -30,9 +30,9 @@ export default class Cube extends EventEmitter {
       this.cubeDragged()
     })
 
-    // setTimeout(() => {
-    //   this.shuffle(30)
-    // }, 1500)
+    setTimeout(() => {
+      this.shuffle(20)
+    }, 1500)
   }
 
   setup() {
@@ -362,7 +362,8 @@ export default class Cube extends EventEmitter {
    * @param {THREE.Vector3} axis
    */
   setCubieRotation(cube) {
-    const angle = Math.PI / 2
+    let angle = Math.PI / 2
+    angle *= this.currentPositiveRotation ? 1 : -1
     const rotationQuaternion = new THREE.Quaternion().setFromAxisAngle(
       this.currentRotationAxis,
       angle
@@ -411,12 +412,7 @@ export default class Cube extends EventEmitter {
       this.cubeOrder[cubeIndices[5]],
       this.cubeOrder[cubeIndices[2]],
     ]
-    if (
-      face === 'back' ||
-      face === 'bottom' ||
-      face === 'right' ||
-      face === 'vertical'
-    ) {
+    if (face === 'right' || face === 'left' || face === 'vertical') {
       rotatedIndices.reverse()
     }
     if (!positiveRotation) rotatedIndices.reverse()
@@ -444,27 +440,29 @@ export default class Cube extends EventEmitter {
       (Math.min(this.currentRotationTime / this.rotationDuration, 1) *
         Math.PI) /
       2
-    // this.currentRotationAngle *= this.currentPositiveRotation ? -1 : 1
 
     this.rotatingCubes.forEach((cubeIndex, i) => {
       const startPosition = this.currentStartingPositions[i]
       let newPosition
       if (this.currentRotationAxis.x !== 0) {
-        const angle = this.currentRotationAxis.x * this.currentRotationAngle
+        let angle = this.currentRotationAxis.x * this.currentRotationAngle
+        angle *= this.currentPositiveRotation ? 1 : -1
         newPosition = new THREE.Vector3(
           startPosition.x,
           startPosition.y * Math.cos(angle) - startPosition.z * Math.sin(angle),
           startPosition.y * Math.sin(angle) + startPosition.z * Math.cos(angle)
         )
       } else if (this.currentRotationAxis.y !== 0) {
-        const angle = -this.currentRotationAxis.y * this.currentRotationAngle
+        let angle = -this.currentRotationAxis.y * this.currentRotationAngle
+        angle *= this.currentPositiveRotation ? 1 : -1
         newPosition = new THREE.Vector3(
           startPosition.x * Math.cos(angle) - startPosition.z * Math.sin(angle),
           startPosition.y,
           startPosition.x * Math.sin(angle) + startPosition.z * Math.cos(angle)
         )
       } else if (this.currentRotationAxis.z !== 0) {
-        const angle = this.currentRotationAxis.z * this.currentRotationAngle
+        let angle = this.currentRotationAxis.z * this.currentRotationAngle
+        angle *= this.currentPositiveRotation ? 1 : -1
         newPosition = new THREE.Vector3(
           startPosition.x * Math.cos(angle) - startPosition.y * Math.sin(angle),
           startPosition.x * Math.sin(angle) + startPosition.y * Math.cos(angle),
@@ -475,9 +473,6 @@ export default class Cube extends EventEmitter {
       const cubeMesh = this.cubes[this.cubeOrder[cubeIndex]].mesh
       cubeMesh.position.set(newPosition.x, newPosition.y, newPosition.z)
     })
-
-    this.currentRotationAxis
-    this.currentPositiveRotation
   }
 
   setStartingPositions() {
@@ -491,26 +486,25 @@ export default class Cube extends EventEmitter {
   /**
    *
    * @param {String} face
-   * @param {Boolean} positiveRotation
    * @returns {THREE.Vector3} the axis of rotation
    */
-  getRotationAxis(face, positiveRotation) {
+  getRotationAxis(face) {
     let axis
     switch (face) {
       case 'bottom':
-        axis = new THREE.Vector3(0, -1, 0)
+        axis = new THREE.Vector3(0, 1, 0)
         break
       case 'top':
         axis = new THREE.Vector3(0, 1, 0)
         break
       case 'back':
-        axis = new THREE.Vector3(0, 0, -1)
+        axis = new THREE.Vector3(0, 0, 1)
         break
       case 'front':
         axis = new THREE.Vector3(0, 0, 1)
         break
       case 'left':
-        axis = new THREE.Vector3(-1, 0, 0)
+        axis = new THREE.Vector3(1, 0, 0)
         break
       case 'right':
         axis = new THREE.Vector3(1, 0, 0)
@@ -528,10 +522,6 @@ export default class Cube extends EventEmitter {
       default:
         break
     }
-    if (!positiveRotation) {
-      axis.multiplyScalar(-1)
-    }
-
     return axis
   }
 
