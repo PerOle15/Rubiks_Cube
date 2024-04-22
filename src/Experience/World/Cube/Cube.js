@@ -20,16 +20,16 @@ export default class Cube extends EventEmitter {
     this.setup()
 
     this.experience.resources.on('ready', () => {
-      this.rotateFace('bottom', false)
-      setTimeout(() => {
-        this.rotateFace('front', true)
-        setTimeout(() => {
-          this.rotateFace('left', true)
-          setTimeout(() => {
-            this.rotateFace('back', true)
-          }, 1000)
-        }, 1000)
-      }, 1000)
+      this.rotateFace('vertical', true)
+      // setTimeout(() => {
+      //   this.rotateFace('front', true)
+      //   setTimeout(() => {
+      //     this.rotateFace('left', true)
+      //     setTimeout(() => {
+      //       this.rotateFace('back', true)
+      //     }, 1000)
+      //   }, 1000)
+      // }, 1000)
     })
   }
 
@@ -45,7 +45,7 @@ export default class Cube extends EventEmitter {
 
     this.isRotating = false
     // rotation duration in ms
-    this.rotationDuration = 800
+    this.rotationDuration = 2000
 
     this.on('finishedRotation', () => {
       this.finishedRotation()
@@ -314,7 +314,12 @@ export default class Cube extends EventEmitter {
       this.cubeOrder[cubeIndices[5]],
       this.cubeOrder[cubeIndices[2]],
     ]
-    if (face === 'back' || face === 'bottom' || face === 'right') {
+    if (
+      face === 'back' ||
+      face === 'bottom' ||
+      face === 'right' ||
+      face === 'vertical'
+    ) {
       rotatedIndices.reverse()
     }
     if (!positiveRotation) rotatedIndices.reverse()
@@ -413,6 +418,18 @@ export default class Cube extends EventEmitter {
       case 'right':
         axis = new THREE.Vector3(1, 0, 0)
         break
+      case 'horizontal':
+        axis = new THREE.Vector3(0, 1, 0)
+        break
+      case 'vertical':
+        axis = new THREE.Vector3(1, 0, 0)
+        break
+      case 'parallel':
+        axis = new THREE.Vector3(0, 0, 1)
+        break
+
+      default:
+        break
     }
     if (!positiveRotation) {
       axis.multiplyScalar(-1)
@@ -465,6 +482,15 @@ export default class Cube extends EventEmitter {
         break
       case 'right':
         isAtPosition = i % 9 > 5
+        break
+      case 'horizontal':
+        isAtPosition = Math.floor(i / 9) === 1
+        break
+      case 'vertical':
+        isAtPosition = Math.floor((i % 9) / 3) === 1
+        break
+      case 'parallel':
+        isAtPosition = i % 3 === 1
         break
 
       default:
