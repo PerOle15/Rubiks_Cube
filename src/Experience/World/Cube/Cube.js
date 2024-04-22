@@ -19,17 +19,22 @@ export default class Cube extends EventEmitter {
 
     this.setup()
 
+    this.shuffle(50)
+
     this.experience.resources.on('ready', () => {
-      this.rotateFace('vertical', true)
-      // setTimeout(() => {
-      //   this.rotateFace('front', true)
-      //   setTimeout(() => {
-      //     this.rotateFace('left', true)
-      //     setTimeout(() => {
-      //       this.rotateFace('back', true)
-      //     }, 1000)
-      //   }, 1000)
-      // }, 1000)
+      this.rotateFace('bottom', true)
+      setTimeout(() => {
+        this.rotateFace('front', true)
+        setTimeout(() => {
+          this.rotateFace('left', true)
+          setTimeout(() => {
+            this.rotateFace('back', true)
+            setTimeout(() => {
+              this.rotateFace('horizontal', true)
+            }, 1000)
+          }, 1000)
+        }, 1000)
+      }, 1000)
     })
   }
 
@@ -45,10 +50,17 @@ export default class Cube extends EventEmitter {
 
     this.isRotating = false
     // rotation duration in ms
-    this.rotationDuration = 2000
+    this.rotationDuration = 200
 
     this.on('finishedRotation', () => {
       this.finishedRotation()
+    })
+    this.on('finishedShuffleMove', () => {
+      this.shuffleMove()
+    })
+    this.on('finishedShuffling', () => {
+      console.log('shuffle Finished')
+      this.finishedShuffling()
     })
   }
 
@@ -63,6 +75,7 @@ export default class Cube extends EventEmitter {
         this.positionStep()
       } else {
         this.trigger('finishedRotation')
+        if (this.isShuffling) this.trigger('finishedShuffleMove')
       }
     }
   }
@@ -83,7 +96,59 @@ export default class Cube extends EventEmitter {
       2 * (4 * Math.pow(this.edgeSegments, 2) + 4 * this.edgeSegments) + 2
 
     this.faceNamesArray = ['bottom', 'top', 'back', 'front', 'left', 'right']
+    this.isShuffling = false
+    this.finishedShuffleMove = false
+    this.allMoves = [
+      'bottom',
+      'top',
+      'back',
+      'front',
+      'left',
+      'right',
+      'horizontal',
+      'vertical',
+      'parallel',
+    ]
+    this.shuffleMoves = []
   }
+
+  shuffle(n) {
+    if (this.isShuffling) return
+    this.isShuffling = true
+
+    for (let i = 0; i < n; i++) {
+      let index = Math.floor(Math.random() * this.allMoves.length)
+      let positiveRotation = Math.random() >= 0.5
+
+      // Prevent a move that inverts the previous move
+      if (
+        i > 0 &&
+        this.allMoves[index] === this.shuffleMoves[i - 1].face &&
+        positiveRotation !== this.shuffleMoves[i - 1].positiveRotation
+      ) {
+        positiveRotation = !positiveRotation
+      }
+
+      const move = { face: this.allMoves[index], positiveRotation }
+      this.shuffleMoves.push(move)
+    }
+
+    this.shuffleMove()
+  }
+
+  shuffleMove() {
+    if (this.shuffleMoves.length > 0) {
+      const move = this.shuffleMoves.shift()
+      this.rotateFace(move.face, move.positiveRotation)
+    } else {
+      this.isShuffling = false
+      this.trigger('finishedShuffling')
+    }
+  }
+
+  // TODO
+  // Resetting the orientation after shuffling the cube
+  resetOrientation() {}
 
   /**
    * Adds all geometries to this.cubes
@@ -513,6 +578,8 @@ export default class Cube extends EventEmitter {
     this.setRotatedCubesPosition()
     this.isRotating = false
   }
+
+  finishedShuffling() {}
 }
 
 /**
