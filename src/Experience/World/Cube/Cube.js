@@ -20,16 +20,16 @@ export default class Cube extends EventEmitter {
     this.setup()
 
     this.experience.resources.on('ready', () => {
-      this.rotateFace('right', true)
+      this.rotateFace('bottom', false)
       setTimeout(() => {
         this.rotateFace('front', true)
         setTimeout(() => {
           this.rotateFace('left', true)
           setTimeout(() => {
             this.rotateFace('back', true)
-          }, 2000)
-        }, 2000)
-      }, 2000)
+          }, 1000)
+        }, 1000)
+      }, 1000)
     })
   }
 
@@ -45,7 +45,11 @@ export default class Cube extends EventEmitter {
 
     this.isRotating = false
     // rotation duration in ms
-    this.rotationDuration = 1000
+    this.rotationDuration = 800
+
+    this.on('finishedRotation', () => {
+      this.finishedRotation()
+    })
   }
 
   /**
@@ -58,12 +62,7 @@ export default class Cube extends EventEmitter {
         this.rotationStep()
         this.positionStep()
       } else {
-        this.isRotating = false
-        this.setPositionForRotation(
-          this.currentRotationFace,
-          this.currentPositiveRotation
-        )
-        this.setRotatedCubesPosition()
+        this.trigger('finishedRotation')
       }
     }
   }
@@ -152,13 +151,8 @@ export default class Cube extends EventEmitter {
     // Position the single cubes
     this.setAllCubesPosition()
 
-    // Poition the entire cube
-    // this.offset = -(this.cubeDim + this.cubeSpacing)
-    // this.cubeGroup.position.set(this.offset, this.offset, this.offset)
-
     // // Get bounding Coordinates for group
     // const groupBox = new THREE.Box3().setFromObject(this.cubeGroup)
-    // console.log(groupBox)
   }
 
   /**
@@ -258,9 +252,6 @@ export default class Cube extends EventEmitter {
 
     this.setStartingPositions()
 
-    // this.setPositionForRotation(face, positiveRotation)
-    // this.setRotatedCubesPosition()
-
     for (const cubeIndex of this.rotatingCubes) {
       const cube = this.cubes[this.cubeOrder[cubeIndex]]
 
@@ -301,11 +292,6 @@ export default class Cube extends EventEmitter {
         )
       })
     } else {
-      // console.log(
-      //   this.cubes[
-      //     this.cubeOrder[this.rotatingCubes[0]]
-      //   ].mesh.quaternion.angleTo(this.currentDestQuaternions[0])
-      // )
       this.isRotating = false
     }
   }
@@ -359,55 +345,27 @@ export default class Cube extends EventEmitter {
     // this.currentRotationAngle *= this.currentPositiveRotation ? -1 : 1
 
     this.rotatingCubes.forEach((cubeIndex, i) => {
-      console.log(this.currentRotationAxis)
       const startPosition = this.currentStartingPositions[i]
       let newPosition
-      if (this.currentRotationAxis.x === 1) {
+      if (this.currentRotationAxis.x !== 0) {
+        const angle = this.currentRotationAxis.x * this.currentRotationAngle
         newPosition = new THREE.Vector3(
           startPosition.x,
-          startPosition.y * Math.cos(this.currentRotationAngle) -
-            startPosition.z * Math.sin(this.currentRotationAngle),
-          startPosition.y * Math.sin(this.currentRotationAngle) +
-            startPosition.z * Math.cos(this.currentRotationAngle)
+          startPosition.y * Math.cos(angle) - startPosition.z * Math.sin(angle),
+          startPosition.y * Math.sin(angle) + startPosition.z * Math.cos(angle)
         )
-      } else if (this.currentRotationAxis.x === -1) {
+      } else if (this.currentRotationAxis.y !== 0) {
+        const angle = -this.currentRotationAxis.y * this.currentRotationAngle
         newPosition = new THREE.Vector3(
-          startPosition.x,
-          startPosition.y * Math.cos(-this.currentRotationAngle) -
-            startPosition.z * Math.sin(-this.currentRotationAngle),
-          startPosition.y * Math.sin(-this.currentRotationAngle) +
-            startPosition.z * Math.cos(-this.currentRotationAngle)
-        )
-      } else if (this.currentRotationAxis.y === 1) {
-        newPosition = new THREE.Vector3(
-          startPosition.x * Math.cos(-this.currentRotationAngle) -
-            startPosition.z * Math.sin(-this.currentRotationAngle),
+          startPosition.x * Math.cos(angle) - startPosition.z * Math.sin(angle),
           startPosition.y,
-          startPosition.x * Math.sin(-this.currentRotationAngle) +
-            startPosition.z * Math.cos(-this.currentRotationAngle)
+          startPosition.x * Math.sin(angle) + startPosition.z * Math.cos(angle)
         )
-      } else if (this.currentRotationAxis.y === -1) {
+      } else if (this.currentRotationAxis.z !== 0) {
+        const angle = this.currentRotationAxis.z * this.currentRotationAngle
         newPosition = new THREE.Vector3(
-          startPosition.x * Math.cos(this.currentRotationAngle) -
-            startPosition.z * Math.sin(this.currentRotationAngle),
-          startPosition.y,
-          startPosition.x * Math.sin(this.currentRotationAngle) +
-            startPosition.z * Math.cos(this.currentRotationAngle)
-        )
-      } else if (this.currentRotationAxis.z === 1) {
-        newPosition = new THREE.Vector3(
-          startPosition.x * Math.cos(this.currentRotationAngle) -
-            startPosition.y * Math.sin(this.currentRotationAngle),
-          startPosition.x * Math.sin(this.currentRotationAngle) +
-            startPosition.y * Math.cos(this.currentRotationAngle),
-          startPosition.z
-        )
-      } else if (this.currentRotationAxis.z === -1) {
-        newPosition = new THREE.Vector3(
-          startPosition.x * Math.cos(-this.currentRotationAngle) -
-            startPosition.y * Math.sin(-this.currentRotationAngle),
-          startPosition.x * Math.sin(-this.currentRotationAngle) +
-            startPosition.y * Math.cos(-this.currentRotationAngle),
+          startPosition.x * Math.cos(angle) - startPosition.y * Math.sin(angle),
+          startPosition.x * Math.sin(angle) + startPosition.y * Math.cos(angle),
           startPosition.z
         )
       }
@@ -426,7 +384,6 @@ export default class Cube extends EventEmitter {
       const cube = this.cubes[this.cubeOrder[cubeIndex]]
       this.currentStartingPositions.push(cube.mesh.position.clone())
     }
-    console.log(this.currentStartingPositions)
   }
 
   /**
@@ -520,6 +477,16 @@ export default class Cube extends EventEmitter {
   // to be implemented
   // For raycasting click
   getFaceOrientation() {}
+
+  // Events
+  finishedRotation() {
+    this.setPositionForRotation(
+      this.currentRotationFace,
+      this.currentPositiveRotation
+    )
+    this.setRotatedCubesPosition()
+    this.isRotating = false
+  }
 }
 
 /**
