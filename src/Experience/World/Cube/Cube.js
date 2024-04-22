@@ -2,7 +2,7 @@ import * as THREE from 'three'
 import Experience from '../../Experience'
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js'
 import EventEmitter from '../../Utils/EventEmitter'
-import Raycaster from '../../Utils/RayCaster.js'
+import Raycaster from '../../Utils/Raycaster.js'
 
 export default class Cube extends EventEmitter {
   constructor() {
@@ -622,20 +622,15 @@ export default class Cube extends EventEmitter {
     let normalFace
     if (normal.x === 1) {
       normalFace = 'right'
-    }
-    if (normal.x === -1) {
+    } else if (normal.x === -1) {
       normalFace = 'left'
-    }
-    if (normal.y === 1) {
+    } else if (normal.y === 1) {
       normalFace = 'top'
-    }
-    if (normal.y === -1) {
+    } else if (normal.y === -1) {
       normalFace = 'bottom'
-    }
-    if (normal.z === 1) {
+    } else if (normal.z === 1) {
       normalFace = 'front'
-    }
-    if (normal.z === -1) {
+    } else if (normal.z === -1) {
       normalFace = 'back'
     }
 
