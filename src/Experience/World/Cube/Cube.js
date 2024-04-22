@@ -9,8 +9,8 @@ export default class Cube extends EventEmitter {
     super()
     this.experience = new Experience()
     this.scene = this.experience.scene
+    this.camera = this.experience.camera
     this.time = this.experience.time
-    this
 
     // Debug
     this.debug = this.experience.debug
@@ -25,6 +25,9 @@ export default class Cube extends EventEmitter {
     this.raycaster.setup()
     this.raycaster.on('cubeClicked', () => {
       this.cubeClicked()
+    })
+    this.raycaster.on('dragged', () => {
+      this.cubeDragged()
     })
 
     // setTimeout(() => {
@@ -106,6 +109,11 @@ export default class Cube extends EventEmitter {
       'parallel',
     ]
     this.shuffleMoves = []
+
+    // Moves in certain directions
+    this.horizontalMoves = ['top', 'bottom', 'horizontal']
+    this.verticalMoves = ['left', 'right', 'vertical']
+    this.parallelMoves = ['front', 'back', 'parallel']
   }
 
   shuffle(n) {
@@ -614,7 +622,6 @@ export default class Cube extends EventEmitter {
     }
 
     this.possibleDraggedFaces = this.getPossibleFaces(normal, cubeOrderIndex)
-    console.log(this.possibleDraggedFaces)
   }
 
   getPossibleFaces(normal, i) {
@@ -669,7 +676,134 @@ export default class Cube extends EventEmitter {
     }
   }
 
-  cubeReleased() {}
+  cubeDragged() {
+    // Calculate in which direction the cube is dragged
+    const planeRaycaster = new THREE.Raycaster()
+    planeRaycaster.setFromCamera(this.raycaster.mouse, this.camera.instance)
+
+    const startIntersect = this.raycaster.intersect
+
+    const normal = startIntersect.normal
+    let planeConstant = -(this.cubeDim * 1.5 + this.cubeSpacing)
+
+    const plane = new THREE.Plane(normal, planeConstant)
+
+    // const planeHelper = new THREE.PlaneHelper(plane, 2, 0x000000)
+    // this.scene.add(planeHelper)
+
+    const originVector = startIntersect.point
+    let endVector = new THREE.Vector3()
+    planeRaycaster.ray.intersectPlane(plane, endVector)
+
+    const dragDirection = endVector.clone().sub(originVector)
+    const absX = Math.abs(dragDirection.x)
+    const absY = Math.abs(dragDirection.y)
+    const absZ = Math.abs(dragDirection.z)
+
+    if (normal.x === 1) {
+      // Dragging on right face
+      if (absZ > absY) {
+        for (const move of this.horizontalMoves) {
+          if (this.possibleDraggedFaces.includes(move)) {
+            this.rotateFace(move, dragDirection.z < 0)
+            return
+          }
+        }
+      } else {
+        for (const move of this.parallelMoves) {
+          if (this.possibleDraggedFaces.includes(move)) {
+            this.rotateFace(move, dragDirection.y > 0)
+            return
+          }
+        }
+      }
+    } else if (normal.x === -1) {
+      // Dragging on left face
+      if (absZ > absY) {
+        for (const move of this.horizontalMoves) {
+          if (this.possibleDraggedFaces.includes(move)) {
+            this.rotateFace(move, dragDirection.z > 0)
+            return
+          }
+        }
+      } else {
+        for (const move of this.parallelMoves) {
+          if (this.possibleDraggedFaces.includes(move)) {
+            this.rotateFace(move, dragDirection.y < 0)
+            return
+          }
+        }
+      }
+    } else if (normal.y === 1) {
+      // Dragging on top face
+      if (absZ > absX) {
+        for (const move of this.verticalMoves) {
+          if (this.possibleDraggedFaces.includes(move)) {
+            this.rotateFace(move, dragDirection.z > 0)
+            return
+          }
+        }
+      } else {
+        for (const move of this.parallelMoves) {
+          if (this.possibleDraggedFaces.includes(move)) {
+            this.rotateFace(move, dragDirection.x < 0)
+            return
+          }
+        }
+      }
+    } else if (normal.y === -1) {
+      // Dragging on bottom face
+      if (absZ > absX) {
+        for (const move of this.verticalMoves) {
+          if (this.possibleDraggedFaces.includes(move)) {
+            this.rotateFace(move, dragDirection.z < 0)
+            return
+          }
+        }
+      } else {
+        for (const move of this.parallelMoves) {
+          if (this.possibleDraggedFaces.includes(move)) {
+            this.rotateFace(move, dragDirection.x > 0)
+            return
+          }
+        }
+      }
+    } else if (normal.z === 1) {
+      // Dragging on front face
+      if (absY > absX) {
+        for (const move of this.verticalMoves) {
+          if (this.possibleDraggedFaces.includes(move)) {
+            this.rotateFace(move, dragDirection.y < 0)
+            return
+          }
+        }
+      } else {
+        for (const move of this.horizontalMoves) {
+          if (this.possibleDraggedFaces.includes(move)) {
+            this.rotateFace(move, dragDirection.x > 0)
+            return
+          }
+        }
+      }
+    } else if (normal.z === -1) {
+      // Dragging on back face
+      if (absY > absX) {
+        for (const move of this.verticalMoves) {
+          if (this.possibleDraggedFaces.includes(move)) {
+            this.rotateFace(move, dragDirection.y > 0)
+            return
+          }
+        }
+      } else {
+        for (const move of this.horizontalMoves) {
+          if (this.possibleDraggedFaces.includes(move)) {
+            this.rotateFace(move, dragDirection.x < 0)
+            return
+          }
+        }
+      }
+    }
+  }
 }
 
 /**

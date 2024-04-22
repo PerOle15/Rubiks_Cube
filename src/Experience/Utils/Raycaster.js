@@ -57,6 +57,7 @@ export default class Raycaster extends EventEmitter {
   }
 
   dragStart(e, type) {
+    if (this.dragging) return
     this.dragRotated = false
     this.updateMousePosition(e, type)
     this.startMousePosition = this.mouse.clone()
@@ -78,7 +79,7 @@ export default class Raycaster extends EventEmitter {
       const distance = this.startMousePositionPixels.distanceTo(
         this.mousePixels
       )
-      if (distance >= 30) {
+      if (distance >= 20) {
         this.trigger('dragged')
         this.dragRotated = true
       }
