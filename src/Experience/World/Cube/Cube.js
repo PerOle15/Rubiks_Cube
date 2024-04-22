@@ -2,6 +2,7 @@ import * as THREE from 'three'
 import Experience from '../../Experience'
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js'
 import EventEmitter from '../../Utils/EventEmitter'
+import Raycaster from '../../Utils/RayCaster.js'
 
 export default class Cube extends EventEmitter {
   constructor() {
@@ -9,6 +10,7 @@ export default class Cube extends EventEmitter {
     this.experience = new Experience()
     this.scene = this.experience.scene
     this.time = this.experience.time
+    this
 
     // Debug
     this.debug = this.experience.debug
@@ -18,24 +20,16 @@ export default class Cube extends EventEmitter {
     }
 
     this.setup()
-
-    this.shuffle(50)
-
-    this.experience.resources.on('ready', () => {
-      this.rotateFace('bottom', true)
-      setTimeout(() => {
-        this.rotateFace('front', true)
-        setTimeout(() => {
-          this.rotateFace('left', true)
-          setTimeout(() => {
-            this.rotateFace('back', true)
-            setTimeout(() => {
-              this.rotateFace('horizontal', true)
-            }, 1000)
-          }, 1000)
-        }, 1000)
-      }, 1000)
+    this.raycaster = new Raycaster()
+    this.raycaster.boundingCubes = this.boundingCubes
+    this.raycaster.setup()
+    this.raycaster.on('cubeClicked', () => {
+      this.cubeClicked()
     })
+
+    // setTimeout(() => {
+    //   this.shuffle(30)
+    // }, 1500)
   }
 
   setup() {
@@ -44,6 +38,9 @@ export default class Cube extends EventEmitter {
     this.cubes = []
     // Indices of all cubes in the order they are positioned
     this.cubeOrder = []
+
+    this.boundingCubes = []
+
     this.setGeometry()
     this.setMaterial()
     this.setMeshes()
@@ -59,7 +56,6 @@ export default class Cube extends EventEmitter {
       this.shuffleMove()
     })
     this.on('finishedShuffling', () => {
-      console.log('shuffle Finished')
       this.finishedShuffling()
     })
   }
@@ -117,19 +113,20 @@ export default class Cube extends EventEmitter {
     this.isShuffling = true
 
     for (let i = 0; i < n; i++) {
-      let index = Math.floor(Math.random() * this.allMoves.length)
+      // Change this.faceNamesArray to this.allMoves for also involving center faces
+      let index = Math.floor(Math.random() * this.faceNamesArray.length)
       let positiveRotation = Math.random() >= 0.5
 
       // Prevent a move that inverts the previous move
       if (
         i > 0 &&
-        this.allMoves[index] === this.shuffleMoves[i - 1].face &&
+        this.faceNamesArray[index] === this.shuffleMoves[i - 1].face &&
         positiveRotation !== this.shuffleMoves[i - 1].positiveRotation
       ) {
         positiveRotation = !positiveRotation
       }
 
-      const move = { face: this.allMoves[index], positiveRotation }
+      const move = { face: this.faceNamesArray[index], positiveRotation }
       this.shuffleMoves.push(move)
     }
 
@@ -190,6 +187,15 @@ export default class Cube extends EventEmitter {
     this.cubeGroup = new THREE.Group()
     this.scene.add(this.cubeGroup)
 
+    const boundingGeometry = new THREE.BoxGeometry(
+      this.cubeDim + this.cubeSpacing,
+      this.cubeDim + this.cubeSpacing,
+      this.cubeDim + this.cubeSpacing
+    )
+    const boundingMaterial = new THREE.MeshBasicMaterial({
+      visible: false,
+    })
+
     const positionAttribute = this.cubes[0].geometry.getAttribute('position')
 
     for (let i = 0; i < 27; i++) {
@@ -203,6 +209,10 @@ export default class Cube extends EventEmitter {
       this.cubes[i].material = this.material
       this.cubeGroup.add(mesh)
 
+      const boundingMesh = new THREE.Mesh(boundingGeometry, boundingMaterial)
+      this.boundingCubes.push(boundingMesh)
+      this.cubeGroup.add(boundingMesh)
+
       // Coloring
       this.cubes[i].colorsArray = new Float32Array(positionAttribute.count * 3)
 
@@ -215,6 +225,8 @@ export default class Cube extends EventEmitter {
 
     // Position the single cubes
     this.setAllCubesPosition()
+    // Position bounding boxes
+    this.setBoundingCubesPosition()
 
     // // Get bounding Coordinates for group
     // const groupBox = new THREE.Box3().setFromObject(this.cubeGroup)
@@ -231,6 +243,18 @@ export default class Cube extends EventEmitter {
       this.cubes[cubeIndex].mesh.position.y =
         Math.floor(i / 9) * (this.cubeDim + this.cubeSpacing) + this.offset
       this.cubes[cubeIndex].mesh.position.z =
+        (i % 3) * (this.cubeDim + this.cubeSpacing) + this.offset
+    })
+  }
+
+  setBoundingCubesPosition() {
+    this.boundingCubes.forEach((cube, i) => {
+      cube.position.x =
+        Math.floor((i % 9) / 3) * (this.cubeDim + this.cubeSpacing) +
+        this.offset
+      cube.position.y =
+        Math.floor(i / 9) * (this.cubeDim + this.cubeSpacing) + this.offset
+      cube.position.z =
         (i % 3) * (this.cubeDim + this.cubeSpacing) + this.offset
     })
   }
@@ -565,10 +589,6 @@ export default class Cube extends EventEmitter {
     return isAtPosition
   }
 
-  // to be implemented
-  // For raycasting click
-  getFaceOrientation() {}
-
   // Events
   finishedRotation() {
     this.setPositionForRotation(
@@ -580,6 +600,81 @@ export default class Cube extends EventEmitter {
   }
 
   finishedShuffling() {}
+
+  cubeClicked() {
+    const uuid = this.raycaster.intersect.object.uuid
+    const normal = this.raycaster.intersect.normal
+
+    let cubeOrderIndex
+    for (let i = 0; i < this.cubeOrder.length; i++) {
+      if (this.boundingCubes[i].uuid === uuid) {
+        cubeOrderIndex = i
+        break
+      }
+    }
+
+    this.possibleDraggedFaces = this.getPossibleFaces(normal, cubeOrderIndex)
+    console.log(this.possibleDraggedFaces)
+  }
+
+  getPossibleFaces(normal, i) {
+    let possibleFaces = []
+    let normalFace
+    if (normal.x === 1) {
+      normalFace = 'right'
+    }
+    if (normal.x === -1) {
+      normalFace = 'left'
+    }
+    if (normal.y === 1) {
+      normalFace = 'top'
+    }
+    if (normal.y === -1) {
+      normalFace = 'bottom'
+    }
+    if (normal.z === 1) {
+      normalFace = 'front'
+    }
+    if (normal.z === -1) {
+      normalFace = 'back'
+    }
+
+    for (const face of this.allMoves) {
+      if (face !== normalFace && this.cubeIsOnFace(face, i)) {
+        possibleFaces.push(face)
+      }
+    }
+
+    return possibleFaces
+  }
+
+  cubeIsOnFace(face, i) {
+    switch (face) {
+      case 'bottom':
+        return i < 9
+      case 'top':
+        return i > 17
+      case 'back':
+        return i % 3 === 0
+      case 'front':
+        return i % 3 === 2
+      case 'left':
+        return i % 9 < 3
+      case 'right':
+        return i % 9 > 5
+      case 'horizontal':
+        return Math.floor(i / 9) === 1
+      case 'vertical':
+        return Math.floor((i % 9) / 3) === 1
+      case 'parallel':
+        return i % 3 === 1
+
+      default:
+        break
+    }
+  }
+
+  cubeReleased() {}
 }
 
 /**
